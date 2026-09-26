@@ -168,6 +168,29 @@ export default function FilterPanel({ filters, onChange, availableProviders, pro
     // Defer so the browser paints the spinner before the heavy re-render
     setTimeout(() => onChange({ ...filters, providers: next }), 20);
   };
+  // Clicking the "Dekkingsgebieden" heading does the same for its six ticks
+  const anyCoverageOn =
+    filters.showBuffer300 || filters.showBuffer400 || filters.showBuffer500 ||
+    filters.showBufferFill || filters.bufferMerged || filters.showBoundary;
+  const toggleAllCoverage = () => {
+    const on = !anyCoverageOn;
+    const next = {
+      ...filters,
+      showBuffer300: on,
+      showBuffer400: on,
+      showBuffer500: on,
+      showBufferFill: on,
+      bufferMerged: on,
+      showBoundary: on,
+    };
+    if (on) {
+      // Merging is the heavy part: paint the spinner first, as the merge tick does
+      setMergeSpinner(true);
+      setTimeout(() => onChange(next), 20);
+    } else {
+      onChange(next);
+    }
+  };
   const categories: PointCategory[] = ['locker', 'shop'];
   const services: ServiceFilter[] = ['pickup', 'dropoff'];
 
@@ -352,7 +375,14 @@ export default function FilterPanel({ filters, onChange, availableProviders, pro
 
       {/* Buffer zones */}
       <div>
-        <label className="block text-sm font-medium text-foreground mb-2">{t.filters.coverage}</label>
+        <button
+          type="button"
+          onClick={toggleAllCoverage}
+          title={anyCoverageOn ? t.filters.allCarriersOff : t.filters.allCarriersOn}
+          className="block w-full text-left text-sm font-medium text-foreground mb-2 hover:text-primary transition cursor-pointer select-none"
+        >
+          {t.filters.coverage}
+        </button>
         {buffersNeedZoom && (
           <p className="text-xs text-subtle-foreground mb-2">{t.filters.buffersZoomHint(MAX_BUFFER_POINTS)}</p>
         )}
