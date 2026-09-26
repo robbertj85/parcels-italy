@@ -8,6 +8,7 @@ import { PakketpuntData, Filters } from '@/types/pakketpunten';
 import { COUNTRY } from '@/config/country';
 import { CARRIER_ORDER } from '@/lib/carriers';
 import { t } from '@/lib/strings';
+import { loadViewData } from '@/lib/pointData';
 const MapView = dynamic(() => import('@/components/Map'), {
   ssr: false,
   loading: () => (
@@ -45,11 +46,7 @@ function EmbedContent() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/data/${gemeente}.geojson`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+    loadViewData(gemeente)
       .then((data) => {
         setData(data);
       })

@@ -64,7 +64,7 @@ scripts/build_municipalities.py ──> data/municipalities_all.json, data/munic
 api_client.get_data_pakketpunten(gemeente)
     loads every cache once per process (lru_cache), clips to the municipal polygon
 batch_generate.py ──> webapp/public/data/<slug>.geojson + summary.json
-create_national_overview.py ──> <national_slug>.geojson
+create_national_overview.py ──> <national_slug>.geojson + <national_slug>-points.json (compact, for the map)
 create_provincial_boundaries.py ──> boundaries/index.json + provincie-<slug>.geojson
 create_national_coverage.py ──> geo/coverage_{300,400,500}.geojson (national unions)
 compute_statistics.py ──> statistics.json (incl. `unieke_locaties`)
@@ -158,8 +158,14 @@ or squash old data commits.
 - `app/api/geocode/route.ts` → Photon (komoot) for search/reverse, bbox + country filter;
   the municipality comes from `lib/municipalityLocator.ts` (point-in-polygon on
   `public/data/geo/municipality_polygons.geojson`), not from geocoder names.
-- `components/Map.tsx` → adaptive rendering (canvas + simple markers for the national view),
-  spiderfy at zoom ≥15, hourly-rotated carrier render priority.
+- `components/Map.tsx` → marker rendering, spiderfy at zoom ≥15, hourly-rotated carrier render priority.
+- **National view** (`lib/pointData.ts`, `components/PointsCanvasLayer.tsx`): loads
+  `<national_slug>-points.json` (parallel arrays, ~0.5 MB for Belgium, ~3.4 MB for Italy) instead of
+  the national GeoJSON (8 / 60 MB), and draws every point on one canvas instead of a
+  React-Leaflet component per point (130k components froze the browser for Italy). Those points
+  are summaries (carrier, type, services, municipality slug); a click fetches the point's
+  municipality GeoJSON for the popup. With logo markers chosen, logos appear once ≤300 points
+  are in view. The national GeoJSON stays for downloads and the API.
 - **Coverage circles (300/400/500 m)** are never stored per municipality. The map draws
   them with Turf for at most `MAX_BUFFER_POINTS` (1,000, `lib/mapLimits.ts`) points —
   all points of a municipality, or above that only the points in view. Live, all of

@@ -103,6 +103,8 @@ jobs:
           # would make `git add` refuse, hence find.
           find webapp/public/data -maxdepth 1 -name "*.geojson" -not -name "*-boundaries.geojson" -exec git add {} +
           git add webapp/public/data/boundaries webapp/public/data/geo 2>/dev/null || true
+          # The national view's compact point file (create_national_overview.py)
+          git add webapp/public/data/*-points.json 2>/dev/null || true
           git add webapp/public/data/summary.json webapp/public/data/totals_history.json webapp/public/data/statistics.json webapp/public/municipalities.json 2>/dev/null || true
           # Build commit message with anomaly note if applicable
           msg="🤖 Update pakketpunten data - $(date +'%Y-%m-%d %H:%M UTC')"

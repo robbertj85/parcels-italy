@@ -26,6 +26,8 @@ export interface PakketpuntProperties {
   canPickup: boolean;
   canDropoff: boolean;
   openingstijden?: OpeningHours | null;
+  /** Municipality slug; only on national points loaded from the compact file (lib/pointData). */
+  gemeente?: string;
 }
 
 // Per-day map (Dutch keys) OR a single free-text string OR null when unknown.

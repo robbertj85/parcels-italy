@@ -11,6 +11,7 @@ import ShareModal from '@/components/ShareModal';
 import NearestPointsFinder from '@/components/NearestPointsFinder';
 import { Municipality, PakketpuntData, Filters, PakketpuntProperties, PakketpuntFeature, PointCategory, ServiceFilter, getPointCategory } from '@/types/pakketpunten';
 import { loadProvincialBoundaries, BoundaryLoadProgress } from '@/utils/boundaryLoader';
+import { loadViewData } from '@/lib/pointData';
 
 import { COUNTRY } from '@/config/country';
 import { CARRIER_ORDER } from '@/lib/carriers';
@@ -186,27 +187,8 @@ export default function Home() {
     }
 
     setLoading(true);
-    fetch(`/data/${selectedMunicipality}.geojson`)
-      .then(async (res) => {
-        console.log('Response status:', res.status);
-        console.log('Content-Type:', res.headers.get('content-type'));
-
-        if (!res.ok) {
-          const text = await res.text();
-          console.error('Response body:', text.substring(0, 200));
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
-        // Check content type
-        const contentType = res.headers.get('content-type');
-        if (!contentType || (!contentType.includes('json') && !contentType.includes('geo'))) {
-          const text = await res.text();
-          console.error('Wrong content type. First 500 chars:', text.substring(0, 500));
-          throw new Error(`Expected JSON but got: ${contentType}`);
-        }
-
-        return res.json();
-      })
+    // The national view loads the compact point file (lib/pointData)
+    loadViewData(selectedMunicipality)
       .then((data) => {
         console.log('Data loaded successfully!', data.metadata);
         setData(data);
@@ -241,7 +223,6 @@ export default function Home() {
       })
       .catch((err) => {
         console.error('Error loading data:', err);
-        console.error('Failed to load:', `/data/${selectedMunicipality}.geojson`);
       })
       .finally(() => setLoading(false));
   }, [selectedMunicipality]);

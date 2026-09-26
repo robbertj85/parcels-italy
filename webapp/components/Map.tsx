@@ -28,6 +28,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BasemapLayer from './BasemapLayer';
 import BasemapPicker from './BasemapPicker';
+import PointsCanvasLayer from './PointsCanvasLayer';
+import { isSummaryPoint, loadPointDetails } from '@/lib/pointData';
 import { loadBasemap, saveBasemap, type BasemapId } from '@/lib/basemaps';
 import buffer from '@turf/buffer';
 import union from '@turf/union';
@@ -78,6 +80,79 @@ function OpeningTimes({ value }: { value?: OpeningHours | null }) {
       </table>
     </div>
   );
+}
+
+/** The details shown when a point is clicked. */
+function PointPopupContent({ props }: { props: PakketpuntProperties }) {
+  return (
+    <div className="text-sm">
+      <h3 className="font-bold text-foreground">{props.locatieNaam}</h3>
+      <p className="text-muted-foreground">
+        {props.straatNaam} {props.straatNr}
+      </p>
+      <p className="mt-1">
+        <span className="font-semibold">{t.popup.carrier}</span> {props.vervoerder}
+      </p>
+      {props.puntType && (
+        <p>
+          <span className="font-semibold">{t.popup.type}</span> {props.puntType}
+        </p>
+      )}
+      <p className="mt-1">
+        <span className="font-semibold">{t.popup.services}</span>{' '}
+        {props.canPickup && <span>{t.popup.pickup}</span>}
+        {props.canPickup && props.canDropoff && ' / '}
+        {props.canDropoff && <span>{t.popup.dropoff}</span>}
+        {!props.canPickup && !props.canDropoff && <span className="text-subtle-foreground">{t.common.unknown}</span>}
+      </p>
+      <p className="text-xs text-subtle-foreground mt-1">
+        {props.latitude.toFixed(6)}, {props.longitude.toFixed(6)}
+      </p>
+
+      <OpeningTimes value={props.openingstijden} />
+
+      <div className="mt-3 border-t pt-2">
+        <details>
+          <summary className="flex justify-between items-baseline gap-3 cursor-pointer select-none">
+            <span className="text-xs font-semibold text-primary hover:text-primary">
+              {t.popup.showRawData}
+            </span>
+            <a
+              href={`https://www.google.com/maps?q=&layer=c&cbll=${props.latitude},${props.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:text-primary underline whitespace-nowrap"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {t.popup.streetView}
+            </a>
+          </summary>
+          <div className="mt-2">
+            <pre className="p-3 bg-muted border border-border rounded text-xs overflow-x-auto max-h-64 whitespace-pre-wrap break-words">
+              {JSON.stringify(props, null, 2)}
+            </pre>
+          </div>
+        </details>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Popup for a national-view point: those carry only a summary (lib/pointData),
+ * so the full record is fetched from the point's municipality file first.
+ */
+function SummaryPointPopup({ summary }: { summary: PakketpuntProperties }) {
+  const [details, setDetails] = useState<PakketpuntProperties | null>(null);
+  useEffect(() => {
+    let current = true;
+    loadPointDetails(summary)
+      .then((props) => { if (current) setDetails(props); })
+      .catch(() => { if (current) setDetails(summary); });
+    return () => { current = false; };
+  }, [summary]);
+  if (!details) return <div className="text-sm text-subtle-foreground">{t.common.loading}</div>;
+  return <PointPopupContent props={details} />;
 }
 
 interface MapProps {
@@ -274,6 +349,8 @@ const PROVIDER_INFO: Record<string, {
   ])
 );
 
+const providerColor = (carrier: string) => PROVIDER_INFO[carrier]?.color || '#666';
+
 // Performance thresholds
 /**
  * Coverage layers, largest first. Each gets its own pane with a fixed z-order
@@ -296,6 +373,8 @@ const PERFORMANCE_CONFIG = {
   SIMPLE_MARKER_RADIUS: 4,
   // Simple marker opacity
   SIMPLE_MARKER_OPACITY: 0.8,
+  // National view with logo markers chosen: logos once at most this many points are in view
+  NATIONAL_DETAIL_LIMIT: 300,
 };
 
 // Helper function to calculate marker size based on zoom level
@@ -561,13 +640,23 @@ function getProviderPriority(vervoerder: string): number {
 }
 
 // Helper function to spread overlapping markers (spiderfy effect)
+// Points in render order: lowest priority first (bottom layer)
+function sortByProviderPriority(points: PakketpuntFeature[]): PakketpuntFeature[] {
+  const priority = new Map<string, number>();
+  const prio = (f: PakketpuntFeature) => {
+    const carrier = (f.properties as PakketpuntProperties).vervoerder;
+    let p = priority.get(carrier);
+    if (p === undefined) {
+      p = getProviderPriority(carrier);
+      priority.set(carrier, p);
+    }
+    return p;
+  };
+  return [...points].sort((a, b) => prio(a) - prio(b));
+}
+
 function spreadOverlappingMarkers(points: PakketpuntFeature[], currentZoom: number) {
-  // Sort points by provider priority so DHL/PostNL render on top
-  const sortedPoints = [...points].sort((a, b) => {
-    const prioA = getProviderPriority((a.properties as PakketpuntProperties).vervoerder);
-    const prioB = getProviderPriority((b.properties as PakketpuntProperties).vervoerder);
-    return prioA - prioB; // Lower priority renders first (bottom layer)
-  });
+  const sortedPoints = sortByProviderPriority(points);
 
   if (currentZoom < 15) {
     // Below zoom 15, return sorted points as-is
@@ -615,6 +704,8 @@ function MapComponent(props?: MapProps) {
   const [nationalCoverage, setNationalCoverage] = useState<Record<number, GeoJSONFeatureCollection>>({});
   // Map.tsx only renders client-side (dynamic import, ssr: false), so storage is readable here
   const [basemapId, setBasemapId] = useState<BasemapId>(loadBasemap);
+  // National view: the clicked point, whose popup loads its details
+  const [selectedPoint, setSelectedPoint] = useState<{ slug: string; props: PakketpuntProperties; latlng: [number, number] } | null>(null);
 
   // Extract props with defaults AFTER hooks
   const data = props?.data ?? null;
@@ -762,16 +853,24 @@ function MapComponent(props?: MapProps) {
     ? BUFFER_LAYERS.filter((layer) => activeFilters[layer.filter]).map((layer) => layer.radius).join(',')
     : '';
 
+  // Radii already requested: the effect reruns as each one lands, and would
+  // otherwise fetch the ones still in flight again (tens of MB for Italy)
+  const requestedCoverage = useRef(new Set<number>());
   useEffect(() => {
     if (!wantedNationalRadii) return;
     for (const radius of wantedNationalRadii.split(',').map(Number)) {
-      if (nationalCoverage[radius]) continue;
+      if (nationalCoverage[radius] || requestedCoverage.current.has(radius)) continue;
+      requestedCoverage.current.add(radius);
       fetch(`/data/geo/coverage_${radius}.geojson`)
         .then((res) => (res.ok ? res.json() : null))
         .then((json) => {
           if (json) setNationalCoverage((loaded) => ({ ...loaded, [radius]: json }));
+          else requestedCoverage.current.delete(radius);
         })
-        .catch((err) => console.error(`Loading national coverage ${radius} m failed:`, err));
+        .catch((err) => {
+          requestedCoverage.current.delete(radius);
+          console.error(`Loading national coverage ${radius} m failed:`, err);
+        });
     }
   }, [wantedNationalRadii, nationalCoverage]);
 
@@ -831,10 +930,37 @@ function MapComponent(props?: MapProps) {
     return result;
   }, [bufferPoints, activeFilters.bufferMerged, enabledRadii]);
 
+  // The national view's points are summaries (lib/pointData), drawn on one
+  // canvas (PointsCanvasLayer) instead of a React component per point
+  const summaryView = useMemo(() => {
+    const first = data?.features.find((f) => f.properties.type === 'pakketpunt');
+    return !!first && isSummaryPoint(first.properties as PakketpuntProperties);
+  }, [data]);
+
+  const canvasPoints = useMemo(
+    () => (summaryView ? sortByProviderPriority(points) : []),
+    [summaryView, points]
+  );
+
+  // Logo markers in the national view: only for the points in view, and only
+  // when those are few enough (otherwise the canvas dots)
+  const nationalDetailPoints = useMemo(() => {
+    if (!summaryView || activeFilters.useSimpleMarkers || !viewBounds) return null;
+    const inView: PakketpuntFeature[] = [];
+    for (const f of canvasPoints) {
+      const [lng, lat] = f.geometry.coordinates as [number, number];
+      if (viewBounds.contains([lat, lng])) {
+        inView.push(f);
+        if (inView.length > PERFORMANCE_CONFIG.NATIONAL_DETAIL_LIMIT) return null;
+      }
+    }
+    return inView;
+  }, [summaryView, activeFilters.useSimpleMarkers, viewBounds, canvasPoints]);
+
   // Group markers by exact coordinates and spread them at high zoom (manual spiderfy)
   const spreadPoints = useMemo(
-    () => spreadOverlappingMarkers(points, currentZoom),
-    [points, currentZoom]
+    () => (summaryView ? spreadOverlappingMarkers(nationalDetailPoints ?? [], currentZoom) : spreadOverlappingMarkers(points, currentZoom)),
+    [summaryView, nationalDetailPoints, points, currentZoom]
   );
 
   // Calculate bounds from metadata
@@ -956,56 +1082,7 @@ function MapComponent(props?: MapProps) {
               minWidth={300}
               autoPan={false}
             >
-              <div className="text-sm">
-                <h3 className="font-bold text-foreground">{props.locatieNaam}</h3>
-                <p className="text-muted-foreground">
-                  {props.straatNaam} {props.straatNr}
-                </p>
-                <p className="mt-1">
-                  <span className="font-semibold">{t.popup.carrier}</span> {props.vervoerder}
-                </p>
-                {props.puntType && (
-                  <p>
-                    <span className="font-semibold">{t.popup.type}</span> {props.puntType}
-                  </p>
-                )}
-                <p className="mt-1">
-                  <span className="font-semibold">{t.popup.services}</span>{' '}
-                  {props.canPickup && <span>{t.popup.pickup}</span>}
-                  {props.canPickup && props.canDropoff && ' / '}
-                  {props.canDropoff && <span>{t.popup.dropoff}</span>}
-                  {!props.canPickup && !props.canDropoff && <span className="text-subtle-foreground">{t.common.unknown}</span>}
-                </p>
-                <p className="text-xs text-subtle-foreground mt-1">
-                  {props.latitude.toFixed(6)}, {props.longitude.toFixed(6)}
-                </p>
-
-                <OpeningTimes value={props.openingstijden} />
-
-                <div className="mt-3 border-t pt-2">
-                  <details>
-                    <summary className="flex justify-between items-baseline gap-3 cursor-pointer select-none">
-                      <span className="text-xs font-semibold text-primary hover:text-primary">
-                        {t.popup.showRawData}
-                      </span>
-                      <a
-                        href={`https://www.google.com/maps?q=&layer=c&cbll=${props.latitude},${props.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:text-primary underline whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t.popup.streetView}
-                      </a>
-                    </summary>
-                    <div className="mt-2">
-                      <pre className="p-3 bg-muted border border-border rounded text-xs overflow-x-auto max-h-64 whitespace-pre-wrap break-words">
-                        {JSON.stringify(props, null, 2)}
-                      </pre>
-                    </div>
-                  </details>
-                </div>
-              </div>
+              {isSummaryPoint(props) ? <SummaryPointPopup summary={props} /> : <PointPopupContent props={props} />}
             </Popup>
           </CircleMarker>
         );
@@ -1033,56 +1110,7 @@ function MapComponent(props?: MapProps) {
               minWidth={300}
               autoPan={false}
             >
-              <div className="text-sm">
-                <h3 className="font-bold text-foreground">{props.locatieNaam}</h3>
-                <p className="text-muted-foreground">
-                  {props.straatNaam} {props.straatNr}
-                </p>
-                <p className="mt-1">
-                  <span className="font-semibold">{t.popup.carrier}</span> {props.vervoerder}
-                </p>
-                {props.puntType && (
-                  <p>
-                    <span className="font-semibold">{t.popup.type}</span> {props.puntType}
-                  </p>
-                )}
-                <p className="mt-1">
-                  <span className="font-semibold">{t.popup.services}</span>{' '}
-                  {props.canPickup && <span>{t.popup.pickup}</span>}
-                  {props.canPickup && props.canDropoff && ' / '}
-                  {props.canDropoff && <span>{t.popup.dropoff}</span>}
-                  {!props.canPickup && !props.canDropoff && <span className="text-subtle-foreground">{t.common.unknown}</span>}
-                </p>
-                <p className="text-xs text-subtle-foreground mt-1">
-                  {props.latitude.toFixed(6)}, {props.longitude.toFixed(6)}
-                </p>
-
-                <OpeningTimes value={props.openingstijden} />
-
-                <div className="mt-3 border-t pt-2">
-                  <details>
-                    <summary className="flex justify-between items-baseline gap-3 cursor-pointer select-none">
-                      <span className="text-xs font-semibold text-primary hover:text-primary">
-                        {t.popup.showRawData}
-                      </span>
-                      <a
-                        href={`https://www.google.com/maps?q=&layer=c&cbll=${props.latitude},${props.longitude}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-primary hover:text-primary underline whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t.popup.streetView}
-                      </a>
-                    </summary>
-                    <div className="mt-2">
-                      <pre className="p-3 bg-muted border border-border rounded text-xs overflow-x-auto max-h-64 whitespace-pre-wrap break-words">
-                        {JSON.stringify(props, null, 2)}
-                      </pre>
-                    </div>
-                  </details>
-                </div>
-              </div>
+              {isSummaryPoint(props) ? <SummaryPointPopup summary={props} /> : <PointPopupContent props={props} />}
             </Popup>
           </Marker>
         );
@@ -1247,6 +1275,33 @@ function MapComponent(props?: MapProps) {
 
       {/* Render points with automatic spiderfy at zoom 15+ */}
       {markerElements}
+
+      {/* National view: every point on one canvas; a click opens its details */}
+      {summaryView && !nationalDetailPoints && (
+        <PointsCanvasLayer
+          points={canvasPoints}
+          colorOf={providerColor}
+          radius={currentZoom >= 17 ? 6 : currentZoom >= 15 ? 5 : PERFORMANCE_CONFIG.SIMPLE_MARKER_RADIUS}
+          opacity={PERFORMANCE_CONFIG.SIMPLE_MARKER_OPACITY}
+          highlightedPoints={highlightedPoints}
+          onPointClick={(props, latlng) =>
+            setSelectedPoint({ slug: data.metadata.slug, props, latlng: [latlng.lat, latlng.lng] })
+          }
+        />
+      )}
+      {selectedPoint && selectedPoint.slug === data.metadata.slug && (
+        <Popup
+          key={`selected-${selectedPoint.latlng.join(',')}-${selectedPoint.props.vervoerder}`}
+          position={selectedPoint.latlng}
+          maxWidth={600}
+          minWidth={300}
+          autoPan={false}
+          // Only clear this popup's own selection: a new click unmounts the old one
+          eventHandlers={{ remove: () => setSelectedPoint((current) => (current === selectedPoint ? null : current)) }}
+        >
+          <SummaryPointPopup summary={selectedPoint.props} />
+        </Popup>
+      )}
 
       {/* Render search location marker (blue pin) */}
       {searchLocationMarker && (

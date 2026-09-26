@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 
 import { COUNTRY } from '@/config/country';
 import { t } from '@/lib/strings';
+import { loadViewData } from '@/lib/pointData';
 interface Municipality {
   name: string;
   slug: string;
@@ -28,12 +29,11 @@ export default function DownloadsPage() {
       })
       .catch(err => console.error('Error loading municipalities:', err));
 
-    // Fetch the national file to get the total pakketpunten count
-    fetch(`/data/${COUNTRY.nationalSlug}.geojson`)
-      .then(res => res.json())
+    // The total pakketpunten count, from the national view's compact points
+    // (the national GeoJSON holds the same count but is tens of MB)
+    loadViewData(COUNTRY.nationalSlug)
       .then(data => {
-        const totalPoints = data.features.filter((f: any) => f.properties.type === 'pakketpunt').length;
-        setNationalStats(prev => ({ ...prev, totalPoints }));
+        setNationalStats(prev => ({ ...prev, totalPoints: data.features.length }));
       })
       .catch(err => console.error('Error loading national data:', err));
   }, []);
