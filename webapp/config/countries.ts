@@ -158,7 +158,7 @@ export const COUNTRIES: Record<string, CountryProfile> = {
     geocoderCountryCodes: 'it',
     bbox: [6.62, 35.49, 18.52, 47.09],
 
-    carriers: ['PosteItaliane', 'DPD', 'InPost', 'GLS', 'DHL', 'Amazon'],
+    carriers: ['PosteItaliane', 'DPD', 'InPost', 'GLS', 'DHL', 'Amazon', 'FedEx'],
     amazonDomain: 'www.amazon.it',
 
     missingCarriers: [
