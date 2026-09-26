@@ -79,7 +79,7 @@ COUNTRIES = {
             "name_tag": "name:it",
             "region_resolver": "spatial",
         },
-        "carriers": ["PosteItaliane", "DPD", "InPost", "GLS", "DHL", "Amazon", "FedEx"],
+        "carriers": ["PosteItaliane", "DPD", "InPost", "GLS", "DHL", "Amazon"],
         "dhl": {"country_path": "IT"},
         # DPD Italia = BRT: BRT-fermopoint en BRT-lockers zitten in deze feed
         "dpd": {"country_code": 380},

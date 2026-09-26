@@ -1,10 +1,13 @@
 name: Update Pakketpunten Data
 
 on:
-  schedule:
-    # Weekly on Tuesday 02:00 UTC: after the Amazon workflow, and a day after
-    # the Dutch viewer so the two don't hit the shared carrier APIs together
-    - cron: '0 2 * * 2'
+  # Weekly schedule off for Italy until the generated data leaves git (~370 MB
+  # per run) and the fetch step fits its timeout (Poste alone takes ~100 min).
+  # Run by hand meanwhile.
+  # schedule:
+  #   # Weekly on Tuesday 02:00 UTC: after the Amazon workflow, and a day after
+  #   # the Dutch viewer so the two don't hit the shared carrier APIs together
+  #   - cron: '0 2 * * 2'
   # Allow manual trigger
   workflow_dispatch:
     inputs:

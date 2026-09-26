@@ -2,8 +2,11 @@ name: Fetch Amazon Data
 
 on:
   # Run on schedule (before main update job)
-  schedule:
-    - cron: '0 0 * * 2'  # Tuesday 00:00 UTC, before the main update at 02:00
+  # Weekly schedule off for Italy until the generated data leaves git (~370 MB
+  # per run) and the fetch step fits its timeout (Poste alone takes ~100 min).
+  # Run by hand meanwhile.
+  # schedule:
+  #   - cron: '0 0 * * 2'  # Tuesday 00:00 UTC, before the main update at 02:00
   workflow_dispatch:
     inputs:
       force_save:

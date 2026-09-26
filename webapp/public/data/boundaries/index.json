@@ -1,84 +1,147 @@
 {
-  "generated_at": "2026-09-26T14:42:26.943290Z",
-  "total_provinces": 11,
-  "total_boundaries": 565,
+  "generated_at": "2026-09-26T15:11:19.197696Z",
+  "total_provinces": 20,
+  "total_boundaries": 7689,
   "provinces": [
     {
-      "name": "Antwerpen",
-      "slug": "antwerpen",
-      "file": "boundaries/provincie-antwerpen.geojson",
-      "size_mb": 0.51,
-      "boundaries_count": 67
+      "name": "Abruzzo",
+      "slug": "abruzzo",
+      "file": "boundaries/provincie-abruzzo.geojson",
+      "size_mb": 0.65,
+      "boundaries_count": 305
     },
     {
-      "name": "Brussels Hoofdstedelijk Gewest",
-      "slug": "brussels-hoofdstedelijk-gewest",
-      "file": "boundaries/provincie-brussels-hoofdstedelijk-gewest.geojson",
-      "size_mb": 0.06,
-      "boundaries_count": 19
+      "name": "Basilicata",
+      "slug": "basilicata",
+      "file": "boundaries/provincie-basilicata.geojson",
+      "size_mb": 0.65,
+      "boundaries_count": 131
     },
     {
-      "name": "Henegouwen",
-      "slug": "henegouwen",
-      "file": "boundaries/provincie-henegouwen.geojson",
+      "name": "Calabria",
+      "slug": "calabria",
+      "file": "boundaries/provincie-calabria.geojson",
+      "size_mb": 1.58,
+      "boundaries_count": 404
+    },
+    {
+      "name": "Campania",
+      "slug": "campania",
+      "file": "boundaries/provincie-campania.geojson",
+      "size_mb": 2.89,
+      "boundaries_count": 549
+    },
+    {
+      "name": "Emilia-Romagna",
+      "slug": "emilia-romagna",
+      "file": "boundaries/provincie-emilia-romagna.geojson",
+      "size_mb": 1.92,
+      "boundaries_count": 330
+    },
+    {
+      "name": "Friuli-Venezia Giulia",
+      "slug": "friuli-venezia-giulia",
+      "file": "boundaries/provincie-friuli-venezia-giulia.geojson",
+      "size_mb": 1.91,
+      "boundaries_count": 212
+    },
+    {
+      "name": "Lazio",
+      "slug": "lazio",
+      "file": "boundaries/provincie-lazio.geojson",
+      "size_mb": 2.01,
+      "boundaries_count": 378
+    },
+    {
+      "name": "Liguria",
+      "slug": "liguria",
+      "file": "boundaries/provincie-liguria.geojson",
+      "size_mb": 1.95,
+      "boundaries_count": 227
+    },
+    {
+      "name": "Lombardia",
+      "slug": "lombardia",
+      "file": "boundaries/provincie-lombardia.geojson",
+      "size_mb": 6.94,
+      "boundaries_count": 1420
+    },
+    {
+      "name": "Marche",
+      "slug": "marche",
+      "file": "boundaries/provincie-marche.geojson",
+      "size_mb": 2.1,
+      "boundaries_count": 225
+    },
+    {
+      "name": "Molise",
+      "slug": "molise",
+      "file": "boundaries/provincie-molise.geojson",
       "size_mb": 0.67,
-      "boundaries_count": 69
+      "boundaries_count": 136
     },
     {
-      "name": "Limburg",
-      "slug": "limburg",
-      "file": "boundaries/provincie-limburg.geojson",
-      "size_mb": 0.34,
-      "boundaries_count": 38
+      "name": "Piemonte",
+      "slug": "piemonte",
+      "file": "boundaries/provincie-piemonte.geojson",
+      "size_mb": 5.48,
+      "boundaries_count": 1117
     },
     {
-      "name": "Luik",
-      "slug": "luik",
-      "file": "boundaries/provincie-luik.geojson",
-      "size_mb": 0.76,
-      "boundaries_count": 84
+      "name": "Puglia",
+      "slug": "puglia",
+      "file": "boundaries/provincie-puglia.geojson",
+      "size_mb": 1.92,
+      "boundaries_count": 257
     },
     {
-      "name": "Luxemburg",
-      "slug": "luxemburg",
-      "file": "boundaries/provincie-luxemburg.geojson",
-      "size_mb": 0.66,
-      "boundaries_count": 43
+      "name": "Sardegna",
+      "slug": "sardegna",
+      "file": "boundaries/provincie-sardegna.geojson",
+      "size_mb": 3.8,
+      "boundaries_count": 367
     },
     {
-      "name": "Namen",
-      "slug": "namen",
-      "file": "boundaries/provincie-namen.geojson",
-      "size_mb": 0.32,
-      "boundaries_count": 38
+      "name": "Sicilia",
+      "slug": "sicilia",
+      "file": "boundaries/provincie-sicilia.geojson",
+      "size_mb": 5.32,
+      "boundaries_count": 391
     },
     {
-      "name": "Oost-Vlaanderen",
-      "slug": "oost-vlaanderen",
-      "file": "boundaries/provincie-oost-vlaanderen.geojson",
-      "size_mb": 0.46,
-      "boundaries_count": 55
+      "name": "Toscana",
+      "slug": "toscana",
+      "file": "boundaries/provincie-toscana.geojson",
+      "size_mb": 3.7,
+      "boundaries_count": 273
     },
     {
-      "name": "Vlaams-Brabant",
-      "slug": "vlaams-brabant",
-      "file": "boundaries/provincie-vlaams-brabant.geojson",
-      "size_mb": 0.55,
-      "boundaries_count": 63
+      "name": "Trentino-Alto Adige",
+      "slug": "trentino-alto-adige",
+      "file": "boundaries/provincie-trentino-alto-adige.geojson",
+      "size_mb": 1.91,
+      "boundaries_count": 252
     },
     {
-      "name": "Waals-Brabant",
-      "slug": "waals-brabant",
-      "file": "boundaries/provincie-waals-brabant.geojson",
-      "size_mb": 0.2,
-      "boundaries_count": 27
+      "name": "Umbria",
+      "slug": "umbria",
+      "file": "boundaries/provincie-umbria.geojson",
+      "size_mb": 0.95,
+      "boundaries_count": 92
     },
     {
-      "name": "West-Vlaanderen",
-      "slug": "west-vlaanderen",
-      "file": "boundaries/provincie-west-vlaanderen.geojson",
-      "size_mb": 0.53,
-      "boundaries_count": 62
+      "name": "Valle d'Aosta",
+      "slug": "valle-d-aosta",
+      "file": "boundaries/provincie-valle-d-aosta.geojson",
+      "size_mb": 0.36,
+      "boundaries_count": 64
+    },
+    {
+      "name": "Veneto",
+      "slug": "veneto",
+      "file": "boundaries/provincie-veneto.geojson",
+      "size_mb": 4.05,
+      "boundaries_count": 559
     }
   ]
 }
