@@ -70,7 +70,6 @@ jobs:
       # gating this step on success would keep the cache frozen forever.
       - name: Commit and push Amazon data
         run: |
-          git pull --rebase origin main || true
           # Separate adds on purpose: one `git add` with a missing pathspec
           # stages nothing at all, and fetch_history.json does not exist
           # until the guard has run at least once.
@@ -89,4 +88,10 @@ jobs:
           fi
 
           git commit -m "$msg"
-          git push
+          # Commit first, then rebase onto whatever reached main during the run
+          # (a code push, the other workflow); retry in case main moves again.
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main && git push && exit 0
+            sleep $((attempt * 15))
+          done
+          exit 1
