@@ -68,6 +68,8 @@ TRUST = 0.5
 WORKERS = 3
 REQUEST_DELAY = 0.3
 MAX_ATTEMPTS = 6
+RETRY_ROUNDS = 3
+RETRY_PAUSE = 120  # s, times the round
 
 _local = threading.local()
 
@@ -161,6 +163,8 @@ class Fetcher:
             "clientId": client_id, "countryCode": ISO2, "sortType": "NEAREST", "userBenefit": "false",
             "showFreeShippingLabel": "false", "showPromotionDetail": "false", "showAvailableLocations": "false",
         }
+        self.lock = threading.Lock()
+        self.pause_until = 0.0
 
     def session(self):
         if not hasattr(_local, "session"):
@@ -172,8 +176,10 @@ class Fetcher:
     def search(self, lat, lon):
         params = dict(self.params, latitude=f"{lat:.5f}", longitude=f"{lon:.5f}")
         for attempt in range(MAX_ATTEMPTS):
+            # A refusal pauses every worker, not just the one that got it
+            wait = self.pause_until - time.time()
+            time.sleep(max(wait, 0) + REQUEST_DELAY)
             try:
-                time.sleep(REQUEST_DELAY)
                 resp = self.session().get(API_URL, params=params, timeout=30)
                 resp.raise_for_status()
                 data = resp.json()
@@ -186,7 +192,17 @@ class Fetcher:
                 if attempt == MAX_ATTEMPTS - 1:
                     raise RuntimeError(f"{lat:.4f},{lon:.4f}: {e}")
                 # 5, 10, 20, 40, 80 s: a 503 is Amazon's rate limit, it needs a real pause
-                time.sleep(5 * 2 ** attempt)
+                with self.lock:
+                    self.pause_until = max(self.pause_until, time.time() + 5 * 2 ** attempt)
+
+    def try_search(self, cell):
+        """(cell, locations), or (cell, None) when Amazon kept refusing it."""
+        s, w, n, e = cell
+        try:
+            return cell, self.search((s + n) / 2, (w + e) / 2)
+        except RuntimeError as err:
+            print(f"   ⚠️  {err}", flush=True)
+            return cell, None
 
 
 def crawl(fetcher, cells):
@@ -198,8 +214,22 @@ def crawl(fetcher, cells):
     while cells:
         level += 1
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-            results = list(pool.map(lambda c: (c, fetcher.search((c[0] + c[2]) / 2, (c[1] + c[3]) / 2)), cells))
+            results = list(pool.map(fetcher.try_search, cells))
         calls += len(cells)
+        # Cells Amazon kept refusing get a few more rounds after a longer pause;
+        # only if they still fail is the whole run given up (cache untouched)
+        for round_ in range(1, RETRY_ROUNDS + 1):
+            failed = [c for c, locs in results if locs is None]
+            if not failed:
+                break
+            print(f"   {len(failed)} searches refused; retrying in {RETRY_PAUSE * round_} s", flush=True)
+            time.sleep(RETRY_PAUSE * round_)
+            retried = dict(fetcher.try_search(c) for c in failed)
+            calls += len(failed)
+            results = [(c, retried.get(c, locs)) for c, locs in results]
+        failed = [c for c, locs in results if locs is None]
+        if failed:
+            raise RuntimeError(f"{len(failed)} searches still refused after {RETRY_ROUNDS} retry rounds")
         next_cells = []
         for (s, w, n, e), locations in results:
             clat, clon = (s + n) / 2, (w + e) / 2
