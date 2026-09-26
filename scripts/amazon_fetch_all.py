@@ -63,7 +63,8 @@ MIN_CELL_KM = 0.25
 # The 20 results are near, but not strictly the 20 nearest: a point at 2.0 km
 # can be missing while the 20th is at 2.3 km. So a cell only counts as
 # complete when its corners lie within this share of the 20th point's distance.
-TRUST = 0.5
+# 0.5 split ~6x more cells for Belgium (CI timed out) and found 1 point more.
+TRUST = 0.8
 # amazon.it answers 503 at 6 parallel; 3 with a short pause stay under its limit
 WORKERS = 3
 REQUEST_DELAY = 0.3

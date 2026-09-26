@@ -20,7 +20,7 @@ jobs:
     # Commits the refreshed cache; the default workflow token is read-only
     permissions:
       contents: write
-    timeout-minutes: 120
+    timeout-minutes: 180
 
     steps:
       - name: Checkout repository
@@ -44,7 +44,7 @@ jobs:
       - name: Fetch Amazon data
         id: fetch
         run: python scripts/amazon_fetch_all.py
-        timeout-minutes: 90
+        timeout-minutes: 150
         continue-on-error: true
         env:
           CACHE_GUARD_FORCE: ${{ inputs.force_save && '1' || '' }}
