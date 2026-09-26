@@ -3,10 +3,13 @@ Fetch all Amazon Hub Locker and Counter locations in the configured country.
 
 API: GET https://<amazon domain>/location_selector/fetch_locations
          ?latitude=..&longitude=..&clientId=..&countryCode=..
-     The endpoint behind the pickup-point finder (/ulp). It returns the 20
-     nearest points within ~15 km of a coordinate. It needs the cookies of a
-     browser session, so Playwright opens /ulp once; the page's own first call
-     also gives the clientId. After that every call is a plain HTTP request.
+     The endpoint behind the pickup-point finder (/ulp). It returns 20
+     points within ~15 km of a coordinate. With the finder's default
+     sortType=RECOMMENDED those are not the 20 nearest (closer points are
+     left out), so this asks for sortType=NEAREST. It needs the cookies of a
+     browser session, so Playwright opens the store once; the page's own
+     first call also gives the clientId. After that every call is a plain
+     HTTP request.
 
 Strategy: an adaptive grid over the country (municipality polygons). Each cell
 is searched from its centre; if 20 points came back and the 20th is closer
@@ -57,6 +60,10 @@ API_URL = f"https://{DOMAIN}/location_selector/fetch_locations"
 PAGE_CAP = 20
 START_CELL_KM = 16
 MIN_CELL_KM = 0.25
+# The 20 results are near, but not strictly the 20 nearest: a point at 2.0 km
+# can be missing while the 20th is at 2.3 km. So a cell only counts as
+# complete when its corners lie within this share of the 20th point's distance.
+TRUST = 0.5
 # amazon.it answers 503 at 6 parallel; 3 with a short pause stay under its limit
 WORKERS = 3
 REQUEST_DELAY = 0.3
@@ -151,7 +158,7 @@ class Fetcher:
         self.cookies = cookies
         self.headers = {"User-Agent": user_agent, "Accept": "application/json", "Accept-Language": CONFIG["amazon"]["locale"]}
         self.params = {
-            "clientId": client_id, "countryCode": ISO2, "sortType": "RECOMMENDED", "userBenefit": "false",
+            "clientId": client_id, "countryCode": ISO2, "sortType": "NEAREST", "userBenefit": "false",
             "showFreeShippingLabel": "false", "showPromotionDetail": "false", "showAvailableLocations": "false",
         }
 
@@ -202,7 +209,7 @@ def crawl(fetcher, cells):
                 continue
             reach = max(haversine_km(clat, clon, l["location"]["latitude"], l["location"]["longitude"]) for l in locations)
             corner = haversine_km(clat, clon, n, e)
-            if reach >= corner or corner < MIN_CELL_KM:
+            if reach * TRUST >= corner or corner < MIN_CELL_KM:
                 continue
             splits += 1
             next_cells += [(s, w, clat, clon), (s, clon, clat, e), (clat, w, n, clon), (clat, clon, n, e)]
